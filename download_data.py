@@ -96,8 +96,13 @@ def create_directory_structure(output_dir, database_name):
 def save_sql_object(file_path, name, definition):
     """Save SQL object definition to file."""
     try:
+        # Trim leading/trailing whitespace and trailing semicolon to reduce false positives in comparisons
+        trimmed_definition = definition.strip()
+        if trimmed_definition.endswith(';'):
+            trimmed_definition = trimmed_definition[:-1].rstrip()
+        
         with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(definition)
+            f.write(trimmed_definition)
         print(f"Saved: {file_path}")
     except Exception as e:
         print(f"Error saving {name}: {e}")
