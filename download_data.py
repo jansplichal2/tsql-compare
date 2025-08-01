@@ -1,6 +1,7 @@
 import pyodbc
 import tomli
 import sys
+import csv
 import argparse
 from pathlib import Path
 
@@ -37,6 +38,24 @@ def create_connection(config, database_name):
     except Exception as e:
         print(f"Error connecting to database {database_name}: {e}")
         return None
+
+
+def dump_schema_to_csv(
+    connection,
+    sql_file: str
+):
+
+    sql_file = Path(sql_file)
+    sql = sql_file.read_text(encoding="utf-8")
+
+    with connection.cursor() as cur:
+        cur.execute("SET NOCOUNT ON;")
+        cur.execute(sql)
+
+        cols = [col[0] for col in cur.description]
+        rows = cur.fetchall()
+
+    return cols, rows
 
 
 def get_stored_procedures(connection):
@@ -86,11 +105,13 @@ def create_directory_structure(output_dir, database_name):
     base_path = Path(output_dir) / database_name
     procedures_path = base_path / "procedures"
     functions_path = base_path / "functions"
+    schema_path = base_path / "schema"
     
     procedures_path.mkdir(parents=True, exist_ok=True)
     functions_path.mkdir(parents=True, exist_ok=True)
+    schema_path.mkdir(parents=True, exist_ok=True)
     
-    return procedures_path, functions_path
+    return procedures_path, functions_path, schema_path
 
 
 def save_sql_object(file_path, name, definition):
@@ -118,7 +139,7 @@ def download_database_objects(config, database_name):
     
     try:
         output_dir = config["defaults"]["output_dir"]
-        procedures_path, functions_path = create_directory_structure(output_dir, database_name)
+        procedures_path, functions_path, schema_path = create_directory_structure(output_dir, database_name)
         
         # Download stored procedures
         procedures = get_stored_procedures(connection)
@@ -135,6 +156,15 @@ def download_database_objects(config, database_name):
             if func_definition:
                 file_path = functions_path / f"{func_name}.sql"
                 save_sql_object(file_path, func_name, func_definition)
+
+        cols, rows = dump_schema_to_csv(connection, "sql/simple_schema_dump.sql")
+
+        csv_file = Path(schema_path) / f"schema.csv"
+        # --- write CSV -----------------------------------------------------
+        with csv_file.open("w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(cols)
+            writer.writerows(rows)
         
         return True
     
