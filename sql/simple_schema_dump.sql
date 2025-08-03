@@ -17,6 +17,7 @@ baseTbl AS
             table_name
     FROM    INFORMATION_SCHEMA.TABLES
     WHERE   TABLE_CATALOG = (SELECT v_SchemaName FROM vars)
+    AND TABLE_NAME NOT LIKE 'syncobj_%'
 ),
 
 /* ---------------------------------------------------------------------------
@@ -137,7 +138,6 @@ metaAllCols_agg AS
              mc.objecttype,
              mc.objectname
 ),
-
 /* ---------------------------------------------------------------------------
    4.  PK / FK / UNIQUE constraints
    ---------------------------------------------------------------------------*/
